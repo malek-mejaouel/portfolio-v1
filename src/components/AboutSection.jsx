@@ -30,7 +30,7 @@ export const AboutSection = () => {
                             </a>
                             {/* cv link */}
                             <a
-                                href=""
+                                href="https://drive.google.com/file/d/1w3AWmN8OAhPqRPO6wie8zxxp4ytHVhKV/view?usp=sharing" target="_blank" rel="noopener noreferrer"
                                 className="px-6 py-2 rounded-full border border-primary text-primary hover:bg-primary/10 transition-colors duration-300"
                             >
                                 Download CV
@@ -60,7 +60,7 @@ export const AboutSection = () => {
                                             <User className="h-6 w-6 text-primary" />
                                         </div>
                                          <div className="text-left">
-                                            <h4 className="font-semibold text-lg">UI/UI Design</h4>
+                                            <h4 className="font-semibold text-lg">UI/UX Design</h4>
                                             <p className="text-muted-foreground">
                                                Designing intuitive and engaging user interfaces 
                                                with a focus on user experiences.

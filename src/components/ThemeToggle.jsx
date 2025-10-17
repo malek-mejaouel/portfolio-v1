@@ -1,5 +1,5 @@
 import { Sun, Moon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 const THEME_KEY = "theme";
@@ -34,19 +34,50 @@ export const ThemeToggle = () => {
         // ignore
       }
     }
+
+    // notify other components (canvas background) about theme changes
+    try {
+      window.dispatchEvent(new CustomEvent("themechange", { detail: { isDark: isDarkMode } }));
+    } catch (e) {
+      // ignore (older browsers)
+    }
   }, [isDarkMode]);
 
   const toggle = () => setIsDarkMode((v) => !v);
+  const btnRef = useRef(null);
+  const [topStyle, setTopStyle] = useState({ top: "1rem" });
+
+  useEffect(() => {
+    function alignWithNavbar() {
+      const nav = document.querySelector("nav");
+      if (!nav) return setTopStyle({ top: "1rem" });
+      const rect = nav.getBoundingClientRect();
+      // center of navbar vertically + small offset
+      const top = Math.max(8, rect.top + rect.height / 2 - 16);
+      setTopStyle({ top: `${top}px` });
+    }
+
+    alignWithNavbar();
+    window.addEventListener("resize", alignWithNavbar);
+    window.addEventListener("scroll", alignWithNavbar, { passive: true });
+    return () => {
+      window.removeEventListener("resize", alignWithNavbar);
+      window.removeEventListener("scroll", alignWithNavbar);
+    };
+  }, []);
 
   return (
     <button
+      ref={btnRef}
       onClick={toggle}
       aria-pressed={isDarkMode}
       aria-label={isDarkMode ? "Switch to light theme" : "Switch to dark theme"}
       className={cn(
-        "fixed max-sm:hidden top-5 right-5 z-50 p-2 rounded-full transition-colors duration-300",
+        // use JS to align vertically with the navbar center; keep right offset
+        "fixed max-sm:hidden right-5 z-50 p-2 rounded-full transition-colors duration-300",
         "focus:outline-none"
       )}
+      style={topStyle}
     >
       {isDarkMode ? (
         <Sun className="h-6 w-6 text-yellow-300" />

@@ -1,101 +1,106 @@
-import { useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 
+// Canvas-based dynamic background: binary code rain (Matrix/hacker style)
 export const StarBackground = () => {
-  const [stars, setStars] = useState([]);
-  const [meteors, setMeteors] = useState([]);
-  const [showMeteors, setShowMeteors] = useState(false);
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
 
   useEffect(() => {
-    generateStars();
-    generateMeteors();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
 
-    // small delay before showing meteors so animations have time to initialize
-    const meteorTimeout = setTimeout(() => setShowMeteors(true), 120);
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    const DPR = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = width * DPR;
+    canvas.height = height * DPR;
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-    // Regenerate stars on resize
-    const handleResize = () => generateStars();
-    window.addEventListener("resize", handleResize);
+    // Binary rain parameters
+    const fontSize = 22;
+    const columns = Math.floor(width / fontSize);
+    const drops = Array(columns).fill(0).map(() => Math.random() * height);
+
+    function randChar() {
+      return Math.random() > 0.5 ? "0" : "1";
+    }
+
+    function isDarkMode() {
+      return document.documentElement.classList.contains("dark");
+    }
+
+    function draw() {
+      const dark = isDarkMode();
+
+      // background (changes with theme)
+      ctx.fillStyle = dark ? "rgba(20, 6, 30, 0.72)" : "rgba(255, 255, 255, 0.72)";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.font = `${fontSize}px monospace`;
+      ctx.textAlign = "center";
+
+      for (let i = 0; i < columns; i++) {
+        // color adapts to theme
+        ctx.fillStyle = dark
+          ? i % 8 === 0 ? "#f0d9ff" : "#b08af7" // purple tones
+          : i % 8 === 0 ? "#1a1a1a" : "#555555"; // gray tones for light mode
+
+        ctx.shadowColor = dark ? "#b08af7" : "#aaa";
+        ctx.shadowBlur = 12;
+
+        const char = randChar();
+        ctx.fillText(char, i * fontSize + fontSize / 2, drops[i]);
+        ctx.shadowBlur = 0;
+
+        // movement
+        if (drops[i] > height + fontSize * 2 || Math.random() > 0.996) {
+          drops[i] = Math.random() * -200;
+        } else {
+          drops[i] += fontSize * (0.18 + Math.random() * 0.08);
+        }
+      }
+    }
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * DPR;
+      canvas.height = height * DPR;
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
+    function loop() {
+      draw();
+      rafRef.current = requestAnimationFrame(loop);
+    }
+
+    // detect theme changes (Tailwind or system)
+    const observer = new MutationObserver(() => {
+      // triggers a redraw with updated colors
+      draw();
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+    window.addEventListener("resize", resize);
+    rafRef.current = requestAnimationFrame(loop);
+
+    // cleanup
     return () => {
-      clearTimeout(meteorTimeout);
-      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("resize", resize);
+      observer.disconnect();
     };
   }, []);
 
-  // 🌟 Generate static background stars
-  const generateStars = () => {
-    const numberOfStars = Math.max(20, Math.floor((window.innerWidth * window.innerHeight) / 1000));
-    const newStars = [];
-
-    for (let i = 0; i < numberOfStars; i++) {
-      newStars.push({
-        id: i,
-        size: Math.random() * 3 + 1, // 1–4px
-        x: Math.random() * 100, // percentage
-        y: Math.random() * 100,
-        opacity: Math.random() * 0.5 + 0.5,
-        animationDuration: Math.random() * 4 + 2, // 2–6s
-      });
-    }
-
-    setStars(newStars);
-  };
-
-  // ☄️ Generate falling meteors
-  const generateMeteors = () => {
-    const numberOfMeteors = 4;
-    const newMeteors = [];
-
-    for (let i = 0; i < numberOfMeteors; i++) {
-      newMeteors.push({
-        id: i,
-        size: Math.random() * 2 + 1, // 1–3px width
-        x: Math.random() * 100, // start X%
-        y: Math.random() * 20, // top area (0–20%)
-        opacity: Math.random() * 0.5 + 0.5,
-        delay: `${Math.random() * 5}s`, // random start delay
-        animationDuration: Math.random() * 3 + 3, // 3–6s
-      });
-    }
-
-    setMeteors(newMeteors);
-  };
-
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {/* 🌟 Stars */}
-      {stars.map((star) => (
-        <div
-          key={`star-${star.id}`}
-          className="star animate-pulse-subtle"
-          style={{
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            opacity: star.opacity,
-            animationDuration: `${star.animationDuration}s`,
-          }}
-        />
-      ))}
-
-      {/* ☄️ Meteors (render after a short delay) */}
-      {showMeteors &&
-        meteors.map((meteor) => (
-          <div
-            key={`meteor-${meteor.id}`}
-            className="meteor animate-meteor"
-            style={{
-              // smaller multiplier to avoid large horizontal blocks before animation
-              width: `${meteor.size * 30}px`, // make visible trail
-              height: `${meteor.size}px`,
-              left: `${meteor.x}%`,
-              top: `${meteor.y}%`,
-              opacity: meteor.opacity,
-              animationDelay: meteor.delay,
-              animationDuration: `${meteor.animationDuration}s`,
-            }}
-          />
-        ))}
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 w-full h-full pointer-events-none z-0"
+    />
   );
 };
